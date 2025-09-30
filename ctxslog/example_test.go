@@ -16,8 +16,8 @@ func TestCtxSlog(t *testing.T) {
 	log, ctx := ctxslog.New(ctx, slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{AddSource: true}))
 
 	log.Info("start")
-
 	assert.NotPanics(t, func() { top(ctx) })
+	log.Info("exit")
 }
 
 func top(ctx context.Context) {
@@ -40,7 +40,6 @@ func mid(ctx context.Context) {
 
 func bottom(ctx context.Context) {
 	log := ctxslog.From(ctx).With("bottom", "yes")
-	ctx = ctxslog.With(ctx, log)
 
 	log.Info("start", slog.String("level", "bottom"))
 	log.Info("exit", slog.String("level", "bottom"))
