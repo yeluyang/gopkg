@@ -3,4 +3,6 @@ go 1.25.1
 use (
 	.
 	./ctxkv
+	./routine
+	./streamgraph
 )
