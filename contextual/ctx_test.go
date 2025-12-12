@@ -4,20 +4,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"github.com/yeluyang/gopkg/contextual"
-)
-
-// define unexported key
-type (
-	reqIDKey struct{}
-	envKey   struct{}
 )
 
 // define context setters and getters
 var (
-	withReqID, ReqIDFrom = contextual.New[reqIDKey, string]()
-	WithEnv, EnvFrom     = contextual.New[envKey, string]()
+	WithEnv, EnvFrom     = contextual.New[string]("env")
+	WithEnv2, Env2From   = contextual.New[string]("env") // duplicated name
+	withReqID, reqIDFrom = contextual.New[string]("request_id")
 )
 
 // feel free to custom context setters and getters
@@ -25,29 +20,61 @@ func WithReqID(ctx context.Context) context.Context {
 	return withReqID(ctx, "request-id-generated-directly-without-passed-argument")
 }
 
-func TestContextual(t *testing.T) {
-	ctx := context.Background()
+func ReqIDFrom(ctx context.Context) string {
+	v, ok := reqIDFrom(ctx)
+	if !ok {
+		return "-"
+	}
+	return v
+}
 
+func TestContextual(t *testing.T) {
+	suite.Run(t, new(testSuiteContextual))
+}
+
+type testSuiteContextual struct {
+	suite.Suite
+}
+
+func (s *testSuiteContextual) TestNormalCase() {
+	ctx := context.Background()
+	env, ok := EnvFrom(ctx)
+	s.Falsef(ok, "env=%+v", env)
+
+	ctx = WithEnv(ctx, "yly")
+	env, ok = EnvFrom(ctx)
+	s.Truef(ok, "env=%+v", env)
+	s.Equal("yly", env)
+
+	ctx = WithEnv(ctx, "yly2")
+	env, ok = EnvFrom(ctx)
+	s.Truef(ok, "env=%+v", env)
+	s.Equal("yly2", env)
+}
+
+func (s *testSuiteContextual) TestCustom() {
+	ctx := context.Background()
 	reqID := ReqIDFrom(ctx)
-	assert.Truef(t, reqID.IsNone(), "reqID=%+v", reqID)
+	s.Equal("-", reqID)
 
 	ctx = WithReqID(ctx)
 	reqID = ReqIDFrom(ctx)
-	assert.Truef(t, reqID.IsSome(), "reqID=%+v", reqID)
-	assert.Equal(t, "request-id-generated-directly-without-passed-argument", reqID.MustGet())
+	s.Equal("request-id-generated-directly-without-passed-argument", reqID)
+}
 
-	env := EnvFrom(ctx)
-	assert.Truef(t, env.IsNone(), "env=%+v", env)
-
+func (s *testSuiteContextual) TestConflictName() {
+	ctx := context.Background()
 	ctx = WithEnv(ctx, "yly")
-	env = EnvFrom(ctx)
-	assert.Truef(t, env.IsSome(), "env=%+v", env)
-	assert.Equal(t, "yly", env.MustGet())
+	env, ok := EnvFrom(ctx)
+	s.Truef(ok, "env=%+v", env)
+	s.Equal("yly", env)
 
-	ctx = WithEnv(ctx, "yly2")
-	assert.Equal(t, "yly2", EnvFrom(ctx).MustGet())
+	ctx = WithEnv2(ctx, "env2-value")
+	env2, ok := Env2From(ctx)
+	s.True(ok)
+	s.Equal("env2-value", env2)
 
-	reqID = ReqIDFrom(ctx)
-	assert.Truef(t, reqID.IsSome(), "reqID=%+v", reqID)
-	assert.Equal(t, "request-id-generated-directly-without-passed-argument", reqID.MustGet())
+	env, ok = EnvFrom(ctx)
+	s.True(ok)
+	s.Equal("yly", env)
 }
