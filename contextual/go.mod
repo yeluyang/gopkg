@@ -1,4 +1,4 @@
-module github.com/yeluyang/gopkg/ctxkv
+module github.com/yeluyang/gopkg/contextual
 
 go 1.25.1
 

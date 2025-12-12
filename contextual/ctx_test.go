@@ -1,12 +1,11 @@
-package ctxkv_test
+package contextual_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/yeluyang/gopkg/ctxkv"
+	"github.com/yeluyang/gopkg/contextual"
 )
 
 // define unexported key
@@ -17,8 +16,8 @@ type (
 
 // define context setters and getters
 var (
-	withReqID, ReqIDFrom = ctxkv.New[reqIDKey, string]()
-	WithEnv, EnvFrom     = ctxkv.New[envKey, string]()
+	withReqID, ReqIDFrom = contextual.New[reqIDKey, string]()
+	WithEnv, EnvFrom     = contextual.New[envKey, string]()
 )
 
 // feel free to custom context setters and getters
@@ -26,7 +25,7 @@ func WithReqID(ctx context.Context) context.Context {
 	return withReqID(ctx, "request-id-generated-directly-without-passed-argument")
 }
 
-func TestCtxKV(t *testing.T) {
+func TestContextual(t *testing.T) {
 	ctx := context.Background()
 
 	reqID := ReqIDFrom(ctx)
