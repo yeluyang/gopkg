@@ -3,8 +3,8 @@ go 1.25.1
 use (
 	.
 	./contextual
-	./dynratelimit
+	./fxdecorate
+	./rate
 	./routine
 	./utils
-	./fxdecorate
 )

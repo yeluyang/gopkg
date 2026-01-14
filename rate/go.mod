@@ -1,9 +1,8 @@
-module github.com/yeluyang/gopkg/dynratelimit
+module github.com/yeluyang/gopkg/rate
 
 go 1.25.1
 
 require (
-	github.com/bluele/gcache v0.0.2
 	github.com/stretchr/testify v1.11.1
 	github.com/yeluyang/gopkg/routine v0.0.0-20251111064608-b8c02a3befab
 	golang.org/x/time v0.14.0

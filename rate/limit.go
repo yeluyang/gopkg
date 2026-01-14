@@ -1,4 +1,4 @@
-package dynratelimit
+package rate
 
 import (
 	"github.com/yeluyang/gopkg/routine"
@@ -17,15 +17,15 @@ func (l *dynamicLimiter) OnChange(limit rate.Limit) {
 	}
 }
 
-func newDynamicLimiter(
+func newDynamicLimit(
 	limit func() rate.Limit,
 	onChange func(rate.Limit),
-) DynamicLimiter {
+) DynamicLimit {
 	return &dynamicLimiter{limit: limit, onChange: onChange}
 }
 
-func (l *DynamicRatelimit) asyncRun() { routine.Go(func() { l.run() }) }
-func (l *DynamicRatelimit) run() {
+func (l *Limiter) asyncRun() { routine.Go(func() { l.run() }) }
+func (l *Limiter) run() {
 	for {
 		select {
 		case <-l.stop:

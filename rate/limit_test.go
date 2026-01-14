@@ -1,4 +1,4 @@
-package dynratelimit
+package rate
 
 import (
 	"testing"
@@ -19,7 +19,7 @@ type TestSuiteDynamicRatelimit struct {
 func (s *TestSuiteDynamicRatelimit) TestNormal() {
 	closed := false
 	limit := rate.Limit(0)
-	rl := NewDynamicRatelimit(
+	rl := NewDynamicLimiter(
 		"test",
 		100*time.Millisecond,
 		func() rate.Limit {
@@ -45,7 +45,7 @@ func (s *TestSuiteDynamicRatelimit) TestNormal() {
 }
 
 func (s *TestSuiteDynamicRatelimit) TestInitialLimitIsZero() {
-	rl := NewDynamicRatelimit(
+	rl := NewDynamicLimiter(
 		"test",
 		100*time.Millisecond,
 		func() rate.Limit {
@@ -63,7 +63,7 @@ func (s *TestSuiteDynamicRatelimit) TestInitialLimitIsZero() {
 
 func (s *TestSuiteDynamicRatelimit) TestLimitChangeToZero() {
 	flag := true
-	rl := NewDynamicRatelimit(
+	rl := NewDynamicLimiter(
 		"test",
 		100*time.Millisecond,
 		func() rate.Limit {
