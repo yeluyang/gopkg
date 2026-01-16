@@ -4,6 +4,7 @@ use (
 	.
 	./contextual
 	./errorx
+	./flow
 	./fxdecorate
 	./rate
 	./routine
