@@ -21,11 +21,7 @@ func WithReqID(ctx context.Context) context.Context {
 }
 
 func ReqIDFrom(ctx context.Context) string {
-	v, ok := reqIDFrom(ctx)
-	if !ok {
-		return "-"
-	}
-	return v
+	return reqIDFrom(ctx).OrElse("-")
 }
 
 func TestContextual(t *testing.T) {
@@ -38,16 +34,16 @@ type testSuiteContextual struct {
 
 func (s *testSuiteContextual) TestNormalCase() {
 	ctx := context.Background()
-	env, ok := EnvFrom(ctx)
-	s.Falsef(ok, "env=%+v", env)
+	opt := EnvFrom(ctx)
+	s.Falsef(opt.IsPresent(), "env=%+v", opt)
 
 	ctx = WithEnv(ctx, "yly")
-	env, ok = EnvFrom(ctx)
+	env, ok := EnvFrom(ctx).Get()
 	s.Truef(ok, "env=%+v", env)
 	s.Equal("yly", env)
 
 	ctx = WithEnv(ctx, "yly2")
-	env, ok = EnvFrom(ctx)
+	env, ok = EnvFrom(ctx).Get()
 	s.Truef(ok, "env=%+v", env)
 	s.Equal("yly2", env)
 }
@@ -65,16 +61,16 @@ func (s *testSuiteContextual) TestCustom() {
 func (s *testSuiteContextual) TestConflictName() {
 	ctx := context.Background()
 	ctx = WithEnv(ctx, "yly")
-	env, ok := EnvFrom(ctx)
+	env, ok := EnvFrom(ctx).Get()
 	s.Truef(ok, "env=%+v", env)
 	s.Equal("yly", env)
 
 	ctx = WithEnv2(ctx, "env2-value")
-	env2, ok := Env2From(ctx)
+	env2, ok := Env2From(ctx).Get()
 	s.True(ok)
 	s.Equal("env2-value", env2)
 
-	env, ok = EnvFrom(ctx)
+	env, ok = EnvFrom(ctx).Get()
 	s.True(ok)
 	s.Equal("yly", env)
 }

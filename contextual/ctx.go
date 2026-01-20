@@ -1,11 +1,15 @@
 package contextual
 
-import "context"
+import (
+	"context"
+
+	"github.com/samber/mo"
+)
 
 type (
 	With[V any] func(ctx context.Context, v V) context.Context
 
-	From[V any] func(ctx context.Context) (V, bool)
+	From[V any] func(ctx context.Context) mo.Option[V]
 
 	key string
 )
@@ -15,9 +19,13 @@ func New[V any](name string) (With[V], From[V]) {
 	return func(ctx context.Context, v V) context.Context {
 			return context.WithValue(ctx, k, v)
 		},
-		func(ctx context.Context) (V, bool) {
-			val, ok := ctx.Value(k).(V)
-			return val, ok
+		func(ctx context.Context) mo.Option[V] {
+			if v := ctx.Value(k); v != nil {
+				if v, ok := v.(V); ok {
+					return mo.Some(v)
+				}
+			}
+			return mo.None[V]()
 		}
 }
 
