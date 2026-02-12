@@ -33,6 +33,15 @@ func (s *suiteError) TestNil() {
 	s.Equal("<nil>", err.Error())
 }
 
+func (s *suiteError) TestNilErr() {
+	err := &Error{code: 42}
+	s.Equal("<nil>", err.Error())
+	s.Equal(Code(0), err.Code())
+	s.Nil(err.Unwrap())
+	s.False(err.Is(CodeNotFound.With("x")))
+	s.Equal("<nil>", fmt.Sprintf("%v", err))
+}
+
 func (s *suiteError) TestCode() {
 	err := CodeServerError.With("internal error")
 	s.Equal(CodeServerError, err.Code())
@@ -81,6 +90,55 @@ func (s *suiteError) TestIs_NilReceiver() {
 
 	s.False(nilErr.Is(err))
 	s.False(nilErr.Is(nil))
+}
+
+func (s *suiteError) TestFrom_Errorx() {
+	original := CodeNotFound.With("not found")
+	e, ok := From(original)
+	s.True(ok)
+	s.Equal(original, e)
+}
+
+func (s *suiteError) TestFrom_WrappedErrorx() {
+	original := CodeNotFound.With("not found")
+	wrapped := fmt.Errorf("wrap: %w", original)
+	e, ok := From(wrapped)
+	s.True(ok)
+	s.Equal(original, e)
+}
+
+func (s *suiteError) TestFrom_PlainError() {
+	e, ok := From(errors.New("plain"))
+	s.False(ok)
+	s.Nil(e)
+}
+
+func (s *suiteError) TestFrom_Nil() {
+	e, ok := From(nil)
+	s.False(ok)
+	s.Nil(e)
+}
+
+func (s *suiteError) TestMustFrom_Errorx() {
+	original := CodeNotFound.With("not found")
+	e := MustFrom(original)
+	s.Equal(original, e)
+}
+
+func (s *suiteError) TestMustFrom_PlainError() {
+	plain := errors.New("plain")
+	e := MustFrom(plain)
+	s.NotNil(e)
+	s.Equal(CodeUnknown, e.Code())
+	s.Equal(plain, e.Unwrap())
+}
+
+func (s *suiteError) TestMustFrom_Nil() {
+	e := MustFrom(nil)
+	s.NotNil(e)
+	s.Equal("<nil>", e.Error())
+	s.Equal(CodeOK, e.Code())
+	s.Nil(e.Unwrap())
 }
 
 func (s *suiteError) TestAs() {

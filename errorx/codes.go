@@ -8,6 +8,11 @@ import (
 
 type Code int64
 
+const (
+	CodeOK      Code = 0
+	CodeUnknown Code = -1
+)
+
 func (c Code) Format(format string, a ...any) *Error {
 	return c.from(fmt.Errorf(format, a...))
 }

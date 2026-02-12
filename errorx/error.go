@@ -1,6 +1,7 @@
 package errorx
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"runtime"
@@ -16,29 +17,50 @@ func New(code Code, err error, stack []uintptr) *Error {
 	return &Error{code: code, err: err, stack: stack}
 }
 
+func From(err error) (*Error, bool) {
+	if err == nil {
+		return nil, false
+	}
+	var e *Error
+	if errors.As(err, &e) {
+		return e, true
+	}
+	return nil, false
+}
+
+func MustFrom(err error) *Error {
+	if e, ok := From(err); ok {
+		return e
+	}
+	if err != nil {
+		return New(CodeUnknown, err, nil)
+	}
+	return New(CodeOK, nil, nil)
+}
+
 func (e *Error) Error() string {
-	if e == nil {
+	if e == nil || e.err == nil {
 		return "<nil>"
 	}
 	return fmt.Sprintf("[%d] %s", e.code, e.err)
 }
 
 func (e *Error) Code() Code {
-	if e == nil {
+	if e == nil || e.err == nil {
 		return 0
 	}
 	return e.code
 }
 
 func (e *Error) Unwrap() error {
-	if e == nil {
+	if e == nil || e.err == nil {
 		return nil
 	}
 	return e.err
 }
 
 func (e *Error) Format(s fmt.State, verb rune) {
-	if e == nil {
+	if e == nil || e.err == nil {
 		io.WriteString(s, "<nil>")
 		return
 	}
@@ -67,7 +89,7 @@ func (e *Error) Format(s fmt.State, verb rune) {
 }
 
 func (e *Error) Is(target error) bool {
-	if e == nil {
+	if e == nil || e.err == nil {
 		return false
 	}
 	err, ok := target.(*Error)
