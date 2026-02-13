@@ -6,31 +6,64 @@ import (
 	"runtime"
 )
 
-func Go(fn func()) {
-	var callerPCs [32]uintptr
-	n := runtime.Callers(2, callerPCs[:])
-	callerFrames := callerPCs[:n]
+// Recover returns a function that calls fn with panic recovery.
+// If fn panics, the returned function returns a formatted error
+// containing both the panic stack and the caller stack.
+// Must be called before launching the goroutine to capture the caller stack.
+func Recover(fn func() error, options ...Option) func() error {
+	var cfg config
+	for _, opt := range options {
+		opt(&cfg)
+	}
 
-	go func() {
+	var callerFrames []uintptr
+	if !cfg.noCallerStack {
+		var callerPCs [32]uintptr
+		// skip: runtime.Callers + Wrap + user-requested extra
+		n := runtime.Callers(2+cfg.callerSkip, callerPCs[:])
+		callerFrames = callerPCs[:n]
+	}
+
+	capturePanicStack := !cfg.noPanicStack
+
+	return func() (err error) {
 		defer func() {
 			if r := recover(); r != nil {
-				var panicPCs [32]uintptr
-				// skip: runtime.Callers, this defer, panic()
-				pn := runtime.Callers(3, panicPCs[:])
-
-				var err error
-				if v, ok := r.(error); ok {
-					err = v
+				var panicErr error
+				if e, ok := r.(error); ok {
+					panicErr = e
 				} else {
-					err = fmt.Errorf("%+v", r)
+					panicErr = fmt.Errorf("%+v", r)
 				}
-				slog.Error(fmt.Sprintf("panic: %s\n\n%s\ncall from: \n\n%s", err,
-					formatFrames(panicPCs[:pn]),
-					formatFrames(callerFrames),
-				))
+
+				msg := fmt.Appendf(nil, "panic: %s", panicErr)
+				if capturePanicStack {
+					var panicPCs [32]uintptr
+					// skip: runtime.Callers + this defer + runtime.gopanic
+					pn := runtime.Callers(3, panicPCs[:])
+					msg = fmt.Appendf(msg, "\n\n%s", formatFrames(panicPCs[:pn]))
+				}
+				if len(callerFrames) > 0 {
+					msg = fmt.Appendf(msg, "\ncalled from:\n\n%s", formatFrames(callerFrames))
+				}
+				if err != nil {
+					msg = fmt.Appendf(msg, "\noriginal error: %+v", err)
+				}
+				err = fmt.Errorf("%s", msg)
 			}
 		}()
-		fn()
+		return fn()
+	}
+}
+
+// Go launches fn in a new goroutine with panic recovery.
+// Panics are recovered and logged via slog.Error with both stacks.
+func Go(fn func()) {
+	wrapped := Recover(func() error { fn(); return nil }, WithCallerSkip(1)) // skip Go itself
+	go func() {
+		if err := wrapped(); err != nil {
+			slog.Error(err.Error())
+		}
 	}()
 }
 
