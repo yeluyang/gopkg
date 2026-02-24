@@ -7,4 +7,5 @@ use (
 	./fxdecorate
 	./rate
 	./routine
+	./stream
 )
