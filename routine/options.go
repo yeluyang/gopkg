@@ -7,6 +7,7 @@ type config struct {
 	callerSkip    int
 	noCallerStack bool
 	noPanicStack  bool
+	errorHandler  func(error)
 }
 
 // WithCallerSkip adds additional frames to skip when capturing the caller
@@ -29,5 +30,13 @@ func WithCallerStack(on bool) Option {
 func WithPanicStack(on bool) Option {
 	return func(c *config) {
 		c.noPanicStack = !on
+	}
+}
+
+// WithErrorHandler sets a custom function to handle errors returned by the
+// recovered goroutine. Used by Go to override the default stderr logger.
+func WithErrorHandler(fn func(error)) Option {
+	return func(c *config) {
+		c.errorHandler = fn
 	}
 }

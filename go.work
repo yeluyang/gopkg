@@ -7,5 +7,4 @@ use (
 	./fxdecorate
 	./rate
 	./routine
-	./utils
 )

@@ -1,8 +1,6 @@
 package routine
 
 import (
-	"bytes"
-	"log/slog"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -66,31 +64,27 @@ func (s *TestSuiteRoutine) TestGoStartsImmediately() {
 }
 
 func (s *TestSuiteRoutine) TestGoRecoversPanic() {
-	var buf bytes.Buffer
-	old := slog.Default()
-	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
-	defer slog.SetDefault(old)
+	errCh := make(chan error, 1)
+	handler := WithErrorHandler(func(err error) { errCh <- err })
 
-	done := make(chan struct{})
+	s.callerL1(handler)
 
-	s.callerL1()
+	var captured error
+	select {
+	case captured = <-errCh:
+	case <-time.After(time.Second):
+		s.Fail("goroutine did not panic within timeout")
+		return
+	}
 
-	// Wait for the recover + slog.Error to complete
-	s.Eventually(func() bool {
-		return buf.Len() > 0
-	}, time.Second, 10*time.Millisecond)
-
-	close(done)
-
-	logOutput := buf.String()
-	s.T().Logf("captured slog output:\n%s", logOutput)
-	s.Contains(logOutput, "panic: test panic")
-	s.Contains(logOutput, "routine_test.go")
+	s.T().Logf("captured error:\n%s", captured.Error())
+	s.Contains(captured.Error(), "panic: test panic")
+	s.Contains(captured.Error(), "routine_test.go")
 }
 
-func (s *TestSuiteRoutine) callerL1() { s.callerL2() }
-func (s *TestSuiteRoutine) callerL2() { s.callerL3() }
-func (s *TestSuiteRoutine) callerL3() { Go(s.panicL1) }
+func (s *TestSuiteRoutine) callerL1(opts ...Option) { s.callerL2(opts...) }
+func (s *TestSuiteRoutine) callerL2(opts ...Option) { s.callerL3(opts...) }
+func (s *TestSuiteRoutine) callerL3(opts ...Option) { Go(s.panicL1, opts...) }
 func (s *TestSuiteRoutine) panicL1()  { s.panicL2() }
 func (s *TestSuiteRoutine) panicL2()  { s.panicL3() }
 func (s *TestSuiteRoutine) panicL3()  { panic("test panic") }

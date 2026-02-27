@@ -2,7 +2,7 @@ package routine
 
 import (
 	"fmt"
-	"log/slog"
+	"os"
 	"runtime"
 )
 
@@ -38,10 +38,8 @@ func Recover(fn func() error, options ...Option) func() error {
 
 				msg := fmt.Appendf(nil, "panic: %s", panicErr)
 				if capturePanicStack {
-					var panicPCs [32]uintptr
-					// skip: runtime.Callers + this defer + runtime.gopanic
-					pn := runtime.Callers(3, panicPCs[:])
-					msg = fmt.Appendf(msg, "\n\n%s", formatFrames(panicPCs[:pn]))
+					// skip: captureStack + this defer + runtime.gopanic
+					msg = fmt.Appendf(msg, "\n\n%s", captureStack(2))
 				}
 				if len(callerFrames) > 0 {
 					msg = fmt.Appendf(msg, "\ncalled from:\n\n%s", formatFrames(callerFrames))
@@ -57,25 +55,26 @@ func Recover(fn func() error, options ...Option) func() error {
 }
 
 // Go launches fn in a new goroutine with panic recovery.
-// Panics are recovered and logged via slog.Error with both stacks.
-func Go(fn func()) {
-	wrapped := Recover(func() error { fn(); return nil }, WithCallerSkip(1)) // skip Go itself
+// Panics are recovered and the resulting error is passed to the error handler.
+// If no WithErrorHandler option is provided, errors are written to stderr.
+func Go(fn func(), options ...Option) {
+	var cfg config
+	for _, opt := range options {
+		opt(&cfg)
+	}
+
+	errHandler := cfg.errorHandler
+	if errHandler == nil {
+		errHandler = func(err error) { fmt.Fprintln(os.Stderr, err.Error()) }
+	}
+
+	// WithCallerSkip(1) is the baseline to skip Go itself; user options follow
+	// and can override it (e.g. WithCallerSkip(2) to also skip a wrapper).
+	opts := append([]Option{WithCallerSkip(1)}, options...)
+	wrapped := Recover(func() error { fn(); return nil }, opts...)
 	go func() {
 		if err := wrapped(); err != nil {
-			slog.Error(err.Error())
+			errHandler(err)
 		}
 	}()
-}
-
-func formatFrames(pcs []uintptr) string {
-	frames := runtime.CallersFrames(pcs)
-	var buf []byte
-	for {
-		frame, more := frames.Next()
-		buf = fmt.Appendf(buf, "%s\n\t%s:%d\n", frame.Function, frame.File, frame.Line)
-		if !more {
-			break
-		}
-	}
-	return string(buf)
 }
