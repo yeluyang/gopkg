@@ -9,9 +9,9 @@ import (
 
 // Define error codes for your application
 const (
-	ErrNotFound    errorx.Code = 1001
+	ErrNotFound     errorx.Code = 1001
 	ErrUnauthorized errorx.Code = 1002
-	ErrInternal    errorx.Code = 5000
+	ErrInternal     errorx.Code = 5000
 )
 
 func main() {
@@ -30,13 +30,13 @@ func main() {
 	// Example 3: Wrap existing error
 	fmt.Println("\n=== Example 3: Wrap existing error ===")
 	dbErr := errors.New("connection refused")
-	err = ErrInternal.From(dbErr)
+	err = ErrInternal.Fromf(dbErr, "connect to user database")
 	fmt.Printf("Error: %s\n", err)
 	fmt.Printf("Unwrapped: %v\n", errors.Unwrap(err))
 
 	// Example 4: Check error code using errors.Is
 	fmt.Println("\n=== Example 4: Check error code using errors.Is ===")
-	if errors.Is(err, ErrInternal.With("any message")) {
+	if errors.Is(err, ErrInternal) {
 		fmt.Println("Error is an internal error")
 	}
 

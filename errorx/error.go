@@ -8,9 +8,10 @@ import (
 )
 
 type Error struct {
-	code  Code
-	err   error
-	stack []uintptr
+	code   Code
+	err    error
+	reason string
+	stack  []uintptr
 }
 
 func New(code Code, err error, stack []uintptr) *Error {
@@ -28,23 +29,13 @@ func From(err error) (*Error, bool) {
 	return nil, false
 }
 
-func MustFrom(err error) *Error {
-	if e, ok := From(err); ok {
-		return e
-	}
-	if err != nil {
-		return New(CodeUnknown, err, nil)
-	}
-	return New(CodeOK, nil, nil)
+// WithReason adds context to the error.
+func (e *Error) WithReason(reason string) *Error {
+	e.reason = reason
+	return e
 }
 
-func (e *Error) Error() string {
-	if e == nil || e.err == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("[%d] %s", e.code, e.err)
-}
-
+// Code returns the application error code.
 func (e *Error) Code() Code {
 	if e == nil || e.err == nil {
 		return 0
@@ -52,6 +43,18 @@ func (e *Error) Code() Code {
 	return e.code
 }
 
+// Error implements the built-in error interface.
+func (e *Error) Error() string {
+	if e == nil || e.err == nil {
+		return "<nil>"
+	}
+	if len(e.reason) == 0 {
+		return fmt.Sprintf("[code=%d] %s", e.code, e.err)
+	}
+	return fmt.Sprintf("[code=%d] %s => %s", e.code, e.reason, e.err)
+}
+
+// Unwrap exposes the underlying error to errors.Is, errors.As, and errors.Unwrap.
 func (e *Error) Unwrap() error {
 	if e == nil || e.err == nil {
 		return nil
@@ -59,6 +62,7 @@ func (e *Error) Unwrap() error {
 	return e.err
 }
 
+// Format implements fmt.Formatter, including the stack trace for the %v verb.
 func (e *Error) Format(s fmt.State, verb rune) {
 	if e == nil || e.err == nil {
 		io.WriteString(s, "<nil>")
@@ -88,13 +92,18 @@ func (e *Error) Format(s fmt.State, verb rune) {
 	}
 }
 
+// Is lets errors.Is compare Error and Code values by application code; Unwrap
+// alone can only match the underlying errors.
 func (e *Error) Is(target error) bool {
 	if e == nil || e.err == nil {
 		return false
 	}
-	err, ok := target.(*Error)
-	if !ok {
+	switch target := target.(type) {
+	case Code:
+		return target == e.code
+	case *Error:
+		return target != nil && target.code == e.code
+	default:
 		return false
 	}
-	return err.code == e.code
 }

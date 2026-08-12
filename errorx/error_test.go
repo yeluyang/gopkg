@@ -25,7 +25,7 @@ type suiteError struct {
 
 func (s *suiteError) TestError() {
 	err := CodeNotFound.With("resource not found")
-	s.Equal("[404] resource not found", err.Error())
+	s.Equal("[code=404] resource not found", err.Error())
 }
 
 func (s *suiteError) TestNil() {
@@ -79,6 +79,13 @@ func (s *suiteError) TestIs_DifferentCode() {
 	s.False(errors.Is(err1, err2))
 }
 
+func (s *suiteError) TestIs_Code() {
+	err := CodeNotFound.With("not found")
+
+	s.True(errors.Is(err, CodeNotFound))
+	s.False(errors.Is(err, CodeServerError))
+}
+
 func (s *suiteError) TestIs_NonErrorType() {
 	err := CodeNotFound.With("not found")
 	s.False(errors.Is(err, errors.New("plain error")))
@@ -119,28 +126,6 @@ func (s *suiteError) TestFrom_Nil() {
 	s.Nil(e)
 }
 
-func (s *suiteError) TestMustFrom_Errorx() {
-	original := CodeNotFound.With("not found")
-	e := MustFrom(original)
-	s.Equal(original, e)
-}
-
-func (s *suiteError) TestMustFrom_PlainError() {
-	plain := errors.New("plain")
-	e := MustFrom(plain)
-	s.NotNil(e)
-	s.Equal(CodeUnknown, e.Code())
-	s.Equal(plain, e.Unwrap())
-}
-
-func (s *suiteError) TestMustFrom_Nil() {
-	e := MustFrom(nil)
-	s.NotNil(e)
-	s.Equal("<nil>", e.Error())
-	s.Equal(CodeOK, e.Code())
-	s.Nil(e.Unwrap())
-}
-
 func (s *suiteError) TestAs() {
 	inner := &customError{msg: "custom"}
 	err := CodeBadRequest.From(inner)
@@ -168,12 +153,12 @@ func TestCodeSuite(t *testing.T) {
 
 func (s *CodeSuite) TestFormat() {
 	err := CodeNotFound.Format("user %s not found", "alice")
-	s.Equal("[404] user alice not found", err.Error())
+	s.Equal("[code=404] user alice not found", err.Error())
 }
 
 func (s *CodeSuite) TestWith() {
 	err := CodeServerError.With("internal server error")
-	s.Equal("[500] internal server error", err.Error())
+	s.Equal("[code=500] internal server error", err.Error())
 }
 
 func (s *CodeSuite) TestFrom() {
@@ -181,6 +166,14 @@ func (s *CodeSuite) TestFrom() {
 	err := CodeServerError.From(inner)
 
 	s.Equal(CodeServerError, err.Code())
+	s.Equal(inner, err.Unwrap())
+}
+
+func (s *CodeSuite) TestFromf() {
+	inner := errors.New("database connection failed")
+	err := CodeServerError.Fromf(inner, "query user %d", 42)
+
+	s.Equal("[code=500] query user 42 => database connection failed", err.Error())
 	s.Equal(inner, err.Unwrap())
 }
 
@@ -194,19 +187,19 @@ func TestFormatSuite(t *testing.T) {
 
 func (s *FormatSuite) TestFormat_S() {
 	err := CodeNotFound.With("not found")
-	s.Equal("[404] not found", fmt.Sprintf("%s", err))
+	s.Equal("[code=404] not found", fmt.Sprintf("%s", err))
 }
 
 func (s *FormatSuite) TestFormat_Q() {
 	err := CodeNotFound.With("not found")
-	s.Equal(`"[404] not found"`, fmt.Sprintf("%q", err))
+	s.Equal(`"[code=404] not found"`, fmt.Sprintf("%q", err))
 }
 
 func (s *FormatSuite) TestFormat_V_ContainsMessage() {
 	err := CodeNotFound.With("not found")
 	v := fmt.Sprintf("%v", err)
 
-	s.Contains(v, "[404] not found")
+	s.Contains(v, "[code=404] not found")
 }
 
 func (s *FormatSuite) TestFormat_V_ContainsStackTrace() {
