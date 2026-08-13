@@ -13,11 +13,10 @@ func (c Code) Error() string {
 	return fmt.Sprintf("code=%d", c)
 }
 
-func (c Code) Format(format string, a ...any) *Error {
-	return c.from(fmt.Errorf(format, a...), "")
-}
-
-func (c Code) With(msg string) *Error {
+func (c Code) With(msg string, a ...any) *Error {
+	if len(a) > 0 {
+		msg = fmt.Sprintf(msg, a...)
+	}
 	return c.from(errors.New(msg), "")
 }
 

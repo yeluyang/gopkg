@@ -24,7 +24,7 @@ func main() {
 	// Example 2: Create error with formatted message
 	fmt.Println("\n=== Example 2: Create error with formatted message ===")
 	userID := "user123"
-	err = ErrNotFound.Format("user %q does not exist", userID)
+	err = ErrNotFound.With("user %q does not exist", userID)
 	fmt.Printf("Error: %s\n", err)
 
 	// Example 3: Wrap existing error
@@ -60,7 +60,7 @@ func createError() *errorx.Error {
 }
 
 func innerFunc() *errorx.Error {
-	return ErrNotFound.With("resource not found")
+	return ErrNotFound.Fromf(errors.New("resource not found"), "innerFunc")
 }
 
 type ValidationError struct {

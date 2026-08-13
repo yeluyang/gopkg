@@ -151,14 +151,15 @@ func TestCodeSuite(t *testing.T) {
 	suite.Run(t, new(CodeSuite))
 }
 
-func (s *CodeSuite) TestFormat() {
-	err := CodeNotFound.Format("user %s not found", "alice")
+func (s *CodeSuite) TestWithFormat() {
+	err := CodeNotFound.With("user %s not found", "alice")
 	s.Equal("[code=404] user alice not found", err.Error())
 }
 
 func (s *CodeSuite) TestWith() {
 	err := CodeServerError.With("internal server error")
 	s.Equal("[code=500] internal server error", err.Error())
+	s.Equal("[code=500] 100% unavailable", CodeServerError.With("100% unavailable").Error())
 }
 
 func (s *CodeSuite) TestFrom() {
